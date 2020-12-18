@@ -149,8 +149,8 @@ public class UIImageWall1 : MonoBehaviour {
 
         this.moveSpeed = 100f;
 
-        this.curStartIndex = this.startColumn - 1;
-        this.curEndIndex = this.endColumn - 1;
+        this.curStartIndex = this.startColumn;
+        this.curEndIndex = this.endColumn;
     }
 
     private void InitPosition() {
@@ -246,28 +246,33 @@ public class UIImageWall1 : MonoBehaviour {
         }
 
         for (int i = startRow; i <= endRow; i++) {
+            int index = curStartIndex;
             for (int j = startColumn; j <= endColumn + 1; j++) {
 
-                UIImageItem1 curItem = GetItem(i, j);
+                index = index > m_Column - 1 ? 0 : index;
+
+                UIImageItem1 curItem = GetItem(i, index);
                 RectTransform curRect = curItem.GetComponent<RectTransform>();
                 ItemData curData = curItem.ItemData;
+
+                Debug.LogError($"{curData.code}");
 
                 curItem.GetComponentInChildren<RawImage>().color = Color.red;
 
                 Vector2 targetPos = GetTargetPosition(i, j - 1);
-                Vector3 dir = Vector3.Normalize(targetPos - curData.position);
+                Vector3 dir = Vector3.Normalize(targetPos - curRect.anchoredPosition);
                 curRect.Translate(new Vector2(0, dir.y) * moveSpeed * Time.deltaTime);
 
-                if (Mathf.Abs(curRect.anchoredPosition.y - targetPos.y) <= 0.01f) {
+                if (Vector3.Distance(curRect.anchoredPosition, targetPos) <= 0.1f) {
                     Debug.LogError($"{curData.code} : +++");
-                }
 
+                    curRect.anchoredPosition = targetPos;
+                }
+                index++;
             }
         }
 
 
-
-        //计算所有的特殊点
         //for (int i = startRow; i <= endRow; i++) {
 
         //    int index = curStartIndex;
@@ -291,7 +296,7 @@ public class UIImageWall1 : MonoBehaviour {
         //        curRect.Translate(new Vector2(0, dir.y) * moveSpeed * Time.deltaTime);
 
         //        //计算差值
-        //        var offset = Mathf.Abs(curRect.anchoredPosition.y - targetPos.y);
+        //        var offset = Vector3.Distance(curRect.anchoredPosition, targetPos);
 
         //        if (offset <= 0.1f) {
         //            //固定位置
