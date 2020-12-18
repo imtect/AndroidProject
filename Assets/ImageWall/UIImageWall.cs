@@ -6,10 +6,10 @@ using System.Linq;
 using UnityEngine.UI;
 using DG.Tweening;
 
-public class ItemData {
-    public int row;
-    public int column;
-}
+//public class ItemData {
+//    public int row;
+//    public int column;
+//}
 
 public class UIImageWall : MonoBehaviour {
 
@@ -57,19 +57,8 @@ public class UIImageWall : MonoBehaviour {
         this.m_TotalCount = row * columne;
     }
 
-    //public void SetRowColumn(int row, int columne, float imageSpace = 0) {
-    //    this.m_Row = row;
-    //    this.m_Columne = columne;
-    //    this.m_ImageSpace = imageSpace;
-    //    this.m_ImageItemWidth = (m_Width - (m_Columne - 1) * imageSpace) / m_Columne;
-    //    this.m_ImageItemHeight = (m_Height - (m_Row - 1) * imageSpace) / m_Row;
-    //    this.m_TotalCount = row * columne;
-    //}
-
     public void SetImages(string dirPath) {
         if (string.IsNullOrEmpty(dirPath)) return;
-        //dirPath = Application.persistentDataPath + "/" + dirPath;
-        //Debug.Log(Application.persistentDataPath);
         StartCoroutine(LocalResCacheManager.Instance.LoadTextures(dirPath, (texs) => {
             StartCoroutine(SetImages(texs.Values.ToList()));
         }));
@@ -77,7 +66,6 @@ public class UIImageWall : MonoBehaviour {
 
     public void SetCenterImages(string centerImagePath) {
         if (string.IsNullOrEmpty(centerImagePath)) return;
-        //centerImagePath = Application.persistentDataPath + "/" + centerImagePath;
         LocalResCacheManager.Instance.LoadTexture(centerImagePath, (texs, str) => {
             GameObject centerImage = Instantiate(m_CenterImage, transform).gameObject;
             centerImage.SetActive(true);
