@@ -84,6 +84,7 @@ public class UIImageWall : MonoBehaviour {
             centerImage.GetComponent<RectTransform>().sizeDelta = new Vector2(2 * m_ImageItemWidth, 2 * m_ImageItemHeight);
             centerImage.GetComponent<Button>().onClick.AddListener(() => {
                 //显示中心详情页 //temp
+                CloseDetailPanel();
                 SetShowDetailEffect();
                 CreateCenterDetail(texs);
             });
@@ -124,8 +125,8 @@ public class UIImageWall : MonoBehaviour {
         this.startRow = m_Row % 2 == 0 ? centerRow - 2 : centerRow - 1;
         this.endRow = m_Row % 2 == 0 ? centerRow + 1 : centerRow + 2;
         //中心8列
-        this.startColumn = m_DisplayColumn % 2 == 0 ? centerColumn - 3 : centerColumn - 2;
-        this.endColumn = m_DisplayColumn % 2 == 0 ? centerColumn + 2 : centerColumn + 3;
+        this.startColumn = m_DisplayColumn % 2 == 0 ? centerColumn - 4 : centerColumn - 3;
+        this.endColumn = m_DisplayColumn % 2 == 0 ? centerColumn + 3 : centerColumn + 4;
 
         this.maxHeightOffset = 2f * (m_ImageItemHeight + m_ImageSpace);
         this.minHeightOffset = 0.5f * (m_ImageItemHeight + m_ImageSpace);
@@ -133,7 +134,7 @@ public class UIImageWall : MonoBehaviour {
         this.middleRow = (startRow + endRow) / 2;
         this.middleColumn = (startColumn + endColumn) / 2;
 
-        this.moveSpeed = 10f;
+        this.moveSpeed = 50f;
 
         this.curStartIndex = this.startColumn;
         this.curEndIndex = this.endColumn;
@@ -237,12 +238,14 @@ public class UIImageWall : MonoBehaviour {
         }
     }
 
+    private int index;
+
     private void SetSpecialItemEffect() {
         isMoveFinished = false;
 
         for (int i = startRow; i <= endRow; i++) {
 
-            int index = curStartIndex;
+            index = curStartIndex;
 
             int finishedCount = 0;
 
@@ -253,7 +256,7 @@ public class UIImageWall : MonoBehaviour {
                 UIImageItem curItem = GetItem(i, index);
                 RectTransform curRect = curItem.GetComponent<RectTransform>();
 
-                curItem.GetComponentInChildren<RawImage>().color = Color.red;
+                //curItem.GetComponentInChildren<RawImage>().color = Color.red;
 
                 curItem.transform.SetAsLastSibling();
 
@@ -324,20 +327,67 @@ public class UIImageWall : MonoBehaviour {
         m_UIItemDetail.OnCloseBtnClicked = () => { ResetShowDetailEffect(); };
     }
 
+    private bool isEffect = false;
     private void SetShowDetailEffect() {
+        if (isEffect) return;
+        for (int i = startRow - 2; i < endRow + 2; i++) {
+            for (int j = 0; j < m_Column; j++) {
 
+                float yMin = -2 * (m_ImageItemHeight + m_ImageSpace);
+                float yMax = +2 * (m_ImageItemHeight + m_ImageSpace);
+
+                if (j >= startColumn && j <= endColumn + 1) {
+                    UIImageItem uIImageItem = GetItem(i, j);
+                    RectTransform rect = uIImageItem.GetComponent<RectTransform>();
+                    float x = rect.anchoredPosition.x, y = 0;
+                    if (i <= middleRow)
+                        y = rect.anchoredPosition.y + yMax;
+                    else
+                        y = rect.anchoredPosition.y - yMin;
+                    uIImageItem.SetPosition(uIImageItem.GetComponent<RectTransform>().anchoredPosition, new Vector2(x, y), 0.2f);
+                } else {
+                    float y = UnityEngine.Random.Range(yMin, yMax);
+                }
+            }
+        }
+        isEffect = true;
     }
 
     private void ResetShowDetailEffect() {
+        for (int i = startRow - 1; i < endRow + 1; i++) {
+            for (int j = 0; j < m_Column; j++) {
+                UIImageItem uIImageItem = GetItem(i, j);
 
+                RectTransform rect = uIImageItem.GetComponent<RectTransform>();
+
+                float x = rect.anchoredPosition.x;
+                float y = 0;
+                if (j >= startColumn && j <= endColumn + 1) {
+                    //if (i <= middleRow)
+                    //    y = rect.anchoredPosition.y - 4 * (m_ImageItemHeight + m_ImageSpace);
+                    //else
+                    //    y = rect.anchoredPosition.y + 4 * (m_ImageItemHeight + m_ImageSpace);
+                } else {
+                    y = -i * (m_ImageItemHeight + m_ImageSpace);
+                }
+
+                uIImageItem.SetPosition(uIImageItem.GetComponent<RectTransform>().anchoredPosition, new Vector2(x, y), 0.2f);
+            }
+        }
+        isEffect = false;
     }
 
     private void SetDetailImage() {
         string path = "C:/Users/imtect/Desktop/Detail";
         StartCoroutine(LocalResCacheManager.Instance.LoadTextures(path, texs => {
-            SetShowDetailEffect();
+            if (!isEffect) SetShowDetailEffect();
             CreateItemDetail(texs.Values.ToList()[UnityEngine.Random.Range(0, texs.Values.Count)]);
         }));
+    }
+
+    private void CloseDetailPanel() {
+        if (m_UICenterDetial) m_UICenterDetial.gameObject.SetActive(false);
+        if (m_UIItemDetail) m_UIItemDetail.gameObject.SetActive(false);
     }
 
     #endregion
@@ -349,6 +399,7 @@ public class UIImageWall : MonoBehaviour {
 
         if (uIImageItem != null) {
             //显示详情
+            CloseDetailPanel();
             SetDetailImage();
         }
     }
