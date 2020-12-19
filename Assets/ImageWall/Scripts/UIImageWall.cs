@@ -6,16 +6,7 @@ using System.Linq;
 using UnityEngine.UI;
 using DG.Tweening;
 
-public class ItemData {
-    public int code;
-    public int row;
-    public int column;
-    public Vector2 position;
-    public bool isSpecial;
-    public Vector2 targetPositon;
-}
-
-public class UIImageWall1 : MonoBehaviour {
+public class UIImageWall : MonoBehaviour {
 
     #region 变量
 
@@ -30,17 +21,20 @@ public class UIImageWall1 : MonoBehaviour {
     private float m_ImageItemWidth;
     private float m_ImageItemHeight;
 
-    private UIImageItem1 m_UIImageItem;
+    private UIImageItem m_UIImageItem;
     private Transform m_CenterImage;
 
     private List<ItemData> m_ItemDatas = new List<ItemData>();
-    private Dictionary<ItemData, UIImageItem1> m_UIImageItems = new Dictionary<ItemData, UIImageItem1>();
+    private Dictionary<ItemData, UIImageItem> m_UIImageItems = new Dictionary<ItemData, UIImageItem>();
+
+    private UICenterDetail m_UICenterDetial;
+    private UIItemDetail m_UIItemDetail;
 
     private void Awake() {
         this.m_Width = Screen.width;
         this.m_Height = Screen.height;
 
-        m_UIImageItem = transform.Find("ImageItem").GetComponent<UIImageItem1>();
+        m_UIImageItem = transform.Find("ImageItem").GetComponent<UIImageItem>();
         if (m_UIImageItem) m_UIImageItem.gameObject.SetActive(false);
 
         m_CenterImage = transform.Find("CenterImage");
@@ -48,9 +42,7 @@ public class UIImageWall1 : MonoBehaviour {
     }
 
     private void FixedUpdate() {
-        if (Input.GetKey(KeyCode.Space)) {
-            RefreshItemPosition();
-        }
+        RefreshItemPosition();
     }
 
     #endregion
@@ -91,15 +83,10 @@ public class UIImageWall1 : MonoBehaviour {
             centerImage.GetComponentInChildren<RawImage>().texture = texs;
             centerImage.GetComponent<RectTransform>().sizeDelta = new Vector2(2 * m_ImageItemWidth, 2 * m_ImageItemHeight);
             centerImage.GetComponent<Button>().onClick.AddListener(() => {
-                //显示中心详情页
+                //显示中心详情页 //temp
+                SetShowDetailEffect();
+                CreateCenterDetail(texs);
             });
-        });
-    }
-
-    public void SetDetailImage(string path) {
-        if (string.IsNullOrEmpty(path)) return;
-        LocalResCacheManager.Instance.LoadTexture(path, (texs, str) => {
-
         });
     }
 
@@ -121,12 +108,13 @@ public class UIImageWall1 : MonoBehaviour {
     private int middleRow;
     private int middleColumn;
 
-    private int curEndColumn;
-
     private float moveSpeed;
 
     private int curStartIndex;
     private int curEndIndex;
+
+    private bool isMoveFinished = false;
+
 
     private void InitConfig() {
         this.centerRow = m_Row / 2;
@@ -136,18 +124,16 @@ public class UIImageWall1 : MonoBehaviour {
         this.startRow = m_Row % 2 == 0 ? centerRow - 2 : centerRow - 1;
         this.endRow = m_Row % 2 == 0 ? centerRow + 1 : centerRow + 2;
         //中心8列
-        this.startColumn = m_DisplayColumn % 2 == 0 ? centerColumn - 4 : centerColumn - 3;
-        this.endColumn = m_DisplayColumn % 2 == 0 ? centerColumn + 3 : centerColumn + 4;
+        this.startColumn = m_DisplayColumn % 2 == 0 ? centerColumn - 3 : centerColumn - 2;
+        this.endColumn = m_DisplayColumn % 2 == 0 ? centerColumn + 2 : centerColumn + 3;
 
-        this.maxHeightOffset = 1.5f * (m_ImageItemHeight + m_ImageSpace);
-        this.minHeightOffset = 0.2f * (m_ImageItemHeight + m_ImageSpace);
+        this.maxHeightOffset = 2f * (m_ImageItemHeight + m_ImageSpace);
+        this.minHeightOffset = 0.5f * (m_ImageItemHeight + m_ImageSpace);
 
         this.middleRow = (startRow + endRow) / 2;
         this.middleColumn = (startColumn + endColumn) / 2;
 
-        this.curEndColumn = this.endColumn;
-
-        this.moveSpeed = 100f;
+        this.moveSpeed = 10f;
 
         this.curStartIndex = this.startColumn;
         this.curEndIndex = this.endColumn;
@@ -189,9 +175,8 @@ public class UIImageWall1 : MonoBehaviour {
                     row = i,
                     column = j,
                     position = new Vector2(width, height),
-                    isSpecial = isSpecial,
-                    targetPositon = new Vector2(width, height)
-                }); ;
+                    isSpecial = isSpecial
+                });
             }
         }
     }
@@ -210,16 +195,16 @@ public class UIImageWall1 : MonoBehaviour {
 
         isFinished = true;
 
-        RefreshItemSibling();
+        SetItemSibling();
     }
 
     private void CreateImageItem(int index, Texture2D texture) {
         var curRow = index / m_Column;
         var itemData = m_ItemDatas[index];
-        UIImageItem1 uIImageItem = Instantiate(m_UIImageItem, transform);
+        UIImageItem uIImageItem = Instantiate(m_UIImageItem, transform);
         uIImageItem.gameObject.SetActive(true);
         uIImageItem.Init(itemData);
-        //uIImageItem.SetImage(texture);
+        uIImageItem.SetImage(texture);
         uIImageItem.SetText(index.ToString());
         uIImageItem.SetSize(m_ImageItemWidth, m_ImageItemHeight);
         uIImageItem.SetPosition(new Vector2(Screen.width, -curRow * (m_ImageItemHeight + m_ImageSpace)), itemData.position);
@@ -227,102 +212,77 @@ public class UIImageWall1 : MonoBehaviour {
         m_UIImageItems.Add(itemData, uIImageItem);
     }
 
-    private int ddd = 0;
-
     private void RefreshItemPosition() {
         if (!isFinished) return;
 
+        SetHorizontalEffect();
+
+        SetSpecialItemEffect();
+
+        SetItemSibling();
+    }
+
+    private void SetHorizontalEffect() {
         for (int i = 0; i < m_Row; i++) {
             for (int j = 0; j < m_Column; j++) {
-                UIImageItem1 curItem = GetItem(i, j);
+                UIImageItem curItem = GetItem(i, j);
                 RectTransform curRect = curItem.GetComponent<RectTransform>();
                 //移动X轴
                 curRect.Translate(new Vector2(-1, 0) * Time.deltaTime * moveSpeed);
                 //当X轴移动到最左边时，对象更新位置到最右边
-                if (curRect.anchoredPosition.x < -curRect.sizeDelta.x) {
+                if (curRect.anchoredPosition.x <= -curRect.sizeDelta.x) {
                     curRect.anchoredPosition = new Vector2(Screen.width, curItem.OriginPos.y);
                 }
             }
         }
+    }
+
+    private void SetSpecialItemEffect() {
+        isMoveFinished = false;
 
         for (int i = startRow; i <= endRow; i++) {
+
             int index = curStartIndex;
+
+            int finishedCount = 0;
+
             for (int j = startColumn; j <= endColumn + 1; j++) {
 
                 index = index > m_Column - 1 ? 0 : index;
 
-                UIImageItem1 curItem = GetItem(i, index);
+                UIImageItem curItem = GetItem(i, index);
                 RectTransform curRect = curItem.GetComponent<RectTransform>();
-                ItemData curData = curItem.ItemData;
-
-                Debug.LogError($"{curData.code}");
 
                 curItem.GetComponentInChildren<RawImage>().color = Color.red;
+
+                curItem.transform.SetAsLastSibling();
 
                 Vector2 targetPos = GetTargetPosition(i, j - 1);
                 Vector3 dir = Vector3.Normalize(targetPos - curRect.anchoredPosition);
                 curRect.Translate(new Vector2(0, dir.y) * moveSpeed * Time.deltaTime);
 
                 if (Vector3.Distance(curRect.anchoredPosition, targetPos) <= 0.1f) {
-                    Debug.LogError($"{curData.code} : +++");
 
                     curRect.anchoredPosition = targetPos;
+
+                    isMoveFinished = true;
+
+                    finishedCount++;
                 }
+
                 index++;
             }
+
+            if (isMoveFinished && i == endRow) {
+                curStartIndex++;
+
+                curStartIndex = curStartIndex > m_Column - 1 ? 0 : curStartIndex;
+
+            }
         }
-
-
-        //for (int i = startRow; i <= endRow; i++) {
-
-        //    int index = curStartIndex;
-
-        //    for (int j = startColumn; j <= endColumn + 1; j++) {
-
-        //        //初始索引
-        //        index = index > m_Column - 1 ? 0 : index;
-
-        //        //获取当前的Item
-        //        UIImageItem1 curItem = GetItem(i, index);
-        //        RectTransform curRect = curItem.GetComponent<RectTransform>();
-        //        ItemData curData = curItem.ItemData;
-
-        //        //改变颜色
-        //        curItem.GetComponentInChildren<RawImage>().color = Color.red;
-
-        //        //获取对应的坐标
-        //        Vector2 targetPos = GetTargetPosition(i, j - 1);
-        //        Vector3 dir = Vector3.Normalize(targetPos - curData.position);
-        //        curRect.Translate(new Vector2(0, dir.y) * moveSpeed * Time.deltaTime);
-
-        //        //计算差值
-        //        var offset = Vector3.Distance(curRect.anchoredPosition, targetPos);
-
-        //        if (offset <= 0.1f) {
-        //            //固定位置
-        //            curRect.anchoredPosition = targetPos;
-
-        //            if (index == startColumn)
-        //                curRect.GetComponentInChildren<RawImage>().color = Color.white;
-        //            else if (index == endColumn + 1) {
-        //                curRect.GetComponentInChildren<RawImage>().color = Color.red;
-        //            }
-
-        //            //更新索引
-        //            ddd = curStartIndex + 1;
-        //        }
-
-        //        index++;
-        //    }
-        //}
-
-        ////更新初始索引
-        //curStartIndex = ddd > m_Column ? 0 : ddd;
-
-        RefreshItemSibling();
     }
 
-    private void RefreshItemSibling() {
+    private void SetItemSibling() {
         foreach (var item in m_UIImageItems) {
             if (item.Key.isSpecial)
                 item.Value.transform.SetAsLastSibling();
@@ -336,7 +296,7 @@ public class UIImageWall1 : MonoBehaviour {
         m_UIImageItems.Clear();
     }
 
-    private UIImageItem1 GetItem(int row, int column) {
+    private UIImageItem GetItem(int row, int column) {
         return m_UIImageItems.Where(k => k.Key.row == row && k.Key.column == column)
                              .Select(v => v.Value).FirstOrDefault();
     }
@@ -345,17 +305,60 @@ public class UIImageWall1 : MonoBehaviour {
         return m_ItemDatas.Where(k => k.row == row && k.column == column)
                           .Select(k => k.position).FirstOrDefault();
     }
+
+    private void CreateCenterDetail(Texture2D texture) {
+        if (m_UICenterDetial == null)
+            m_UICenterDetial = Instantiate(Resources.Load<UICenterDetail>("UICenterDetail"), transform.parent);
+        m_UICenterDetial.gameObject.SetActive(true);
+        m_UICenterDetial.SetDetailContent(texture);
+        m_UICenterDetial.OnCloseBtnClicked = () => {
+            ResetShowDetailEffect();
+        };
+    }
+
+    private void CreateItemDetail(Texture2D texture) {
+        if (m_UIItemDetail == null)
+            m_UIItemDetail = Instantiate(Resources.Load<UIItemDetail>("UIItemDetail"), transform.parent);
+        m_UIItemDetail.gameObject.SetActive(true);
+        m_UIItemDetail.SetDetailContent(texture);
+        m_UIItemDetail.OnCloseBtnClicked = () => { ResetShowDetailEffect(); };
+    }
+
+    private void SetShowDetailEffect() {
+
+    }
+
+    private void ResetShowDetailEffect() {
+
+    }
+
+    private void SetDetailImage() {
+        string path = "C:/Users/imtect/Desktop/Detail";
+        StartCoroutine(LocalResCacheManager.Instance.LoadTextures(path, texs => {
+            SetShowDetailEffect();
+            CreateItemDetail(texs.Values.ToList()[UnityEngine.Random.Range(0, texs.Values.Count)]);
+        }));
+    }
+
     #endregion
 
     #region Event
     private void OnItemClicked(ItemData data) {
         if (data == null) return;
-        UIImageItem1 uIImageItem = m_UIImageItems[data];
+        UIImageItem uIImageItem = m_UIImageItems[data];
 
         if (uIImageItem != null) {
             //显示详情
+            SetDetailImage();
         }
     }
     #endregion
 }
 
+public class ItemData {
+    public int code;
+    public int row;
+    public int column;
+    public Vector2 position;
+    public bool isSpecial;
+}

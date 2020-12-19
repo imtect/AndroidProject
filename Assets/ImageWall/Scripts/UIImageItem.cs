@@ -6,7 +6,7 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System;
 
-public class UIImageItem1 : MonoBehaviour, IPointerClickHandler {
+public class UIImageItem : MonoBehaviour {
 
     public ItemData ItemData { get; set; }
     public Vector2 OriginPos { get; set; }
@@ -18,24 +18,14 @@ public class UIImageItem1 : MonoBehaviour, IPointerClickHandler {
     public Action<ItemData> OnImageItemClicked;
 
     private bool m_IsFinished;
-    private float moveSpeed = 100f;
 
     private void Awake() {
         m_Rect = GetComponent<RectTransform>();
         m_RawImage = GetComponentInChildren<RawImage>();
 
         m_Text = GetComponentInChildren<Text>();
-    }
 
-    private void Update() {
-        //if (!m_IsFinished) return;
-
-        //m_Rect.Translate(new Vector2(-1, 0) * Time.deltaTime * moveSpeed);
-        ////当X轴移动到最左边时，对象更新位置到最右边
-        //if (m_Rect.anchoredPosition.x < -m_Rect.sizeDelta.x) {
-        //    m_Rect.anchoredPosition = new Vector2(Screen.width, OriginPos.y);
-        //}
-
+        GetComponent<Button>().onClick.AddListener(() => { OnImageItemClicked?.Invoke(ItemData); });
     }
 
     public void Init(ItemData data) {
@@ -59,9 +49,5 @@ public class UIImageItem1 : MonoBehaviour, IPointerClickHandler {
         DOTween.To(() => initPos, pos => { m_Rect.anchoredPosition = pos; }, lastPos, time).OnComplete(()=> {
             m_IsFinished = true;
         });
-    }
-
-    public void OnPointerClick(PointerEventData eventData) {
-        OnImageItemClicked?.Invoke(ItemData);
     }
 }
